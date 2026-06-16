@@ -1,0 +1,96 @@
+@model IEnumerable<LedgerEntryBase>
+@{
+    var inv  = ViewData["Investment"] as Investment;
+    var kind = (LedgerKind)ViewData["Kind"]!;
+    var kindSlug = kind.ToString().ToLower();
+    ViewData["Title"] = $"{kind} — {inv?.Code}";
+    Layout = "_InvestProLayout";
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3 gap-2 flex-wrap">
+    <div>
+        <a href="/investpro/admin/investments/@inv!.Id" class="btn btn-sm btn-outline-secondary mb-2">← Investment detail</a>
+        <h4 class="mb-1">@kind ledger <span class="text-muted fw-normal">@inv.Code</span></h4>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/investpro/admin/investments/@inv.Id/timeline" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-list-ul"></i> Timeline
+        </a>
+        <a href="/investpro/admin/investments/@inv.Id/ledger/@kindSlug/create" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-lg"></i> New @kind entry
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] is string ok) { <div class="alert alert-success py-2">@ok</div> }
+@if (TempData["Error"]   is string er) { <div class="alert alert-danger py-2">@er</div> }
+
+<div class="d-flex gap-1 mb-3">
+    @foreach (var k in Enum.GetValues<LedgerKind>())
+    {
+        var slug = k.ToString().ToLower();
+        var cls = k == kind ? "btn btn-sm btn-primary" : "btn btn-sm btn-outline-secondary";
+        <a class="@cls" href="/investpro/admin/investments/@inv!.Id/ledger/@slug">@k</a>
+    }
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light small">
+                <tr>
+                    <th style="width:110px">Date</th>
+                    <th>Description</th>
+                    <th style="width:160px">Partner</th>
+                    <th class="text-end" style="width:140px">Amount</th>
+                    <th style="width:90px">Status</th>
+                    <th class="text-end" style="width:120px">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-3">No @kindSlug entries yet.</td></tr>
+                }
+                @foreach (var e in Model)
+                {
+                    <tr>
+                        <td class="small text-muted">@e.TransactionDate.ToString("yyyy-MM-dd")</td>
+                        <td>
+                            <a href="/investpro/admin/investments/@inv!.Id/ledger/@kindSlug/@e.Id/edit" class="text-decoration-none fw-medium">@e.Description</a>
+                            @if (!string.IsNullOrWhiteSpace(e.Details))
+                            {
+                                <div class="small text-muted">@(e.Details!.Length > 80 ? e.Details[..80] + "…" : e.Details)</div>
+                            }
+                        </td>
+                        <td class="small">@(e.Partner?.Name ?? "—")</td>
+                        <td class="text-end fw-medium">@e.Amount.ToString("N2")</td>
+                        <td>
+                            @switch (e.ApprovalStatus)
+                            {
+                                case LedgerApprovalStatus.AutoApproved: <span class="badge text-bg-success">Auto</span> break;
+                                case LedgerApprovalStatus.Pending:      <span class="badge text-bg-warning">Pending</span> break;
+                                case LedgerApprovalStatus.Approved:     <span class="badge text-bg-success">Approved</span> break;
+                                case LedgerApprovalStatus.Rejected:     <span class="badge text-bg-secondary">Rejected</span> break;
+                            }
+                        </td>
+                        <td class="text-end">
+                            <a href="/investpro/admin/investments/@inv!.Id/ledger/@kindSlug/@e.Id/edit" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    data-fcms-action="delete"
+                                    data-url="/investpro/admin/investments/@inv!.Id/ledger/@kindSlug/@e.Id/delete"
+                                    data-confirm-title="Delete entry?"
+                                    data-confirm-message="@e.Description"
+                                    data-confirm-variant="danger"
+                                    data-confirm-label="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

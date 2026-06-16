@@ -1,0 +1,274 @@
+@model LedgerEntryBase
+@{
+    var inv  = ViewData["Investment"] as Investment;
+    var kind = (LedgerKind)ViewData["Kind"]!;
+    var kindSlug = kind.ToString().ToLower();
+    var isNew = ViewData["IsNew"] as bool? ?? false;
+    var partnerOptions = ViewData["PartnerOptions"] as List<(Guid Id, string Name)> ?? new();
+    var categoryOptions = ViewData["CategoryOptions"] as List<ExpenseCategory> ?? new();
+    var attachments = ViewData["Attachments"] as List<LedgerAttachment> ?? new();
+    ViewData["Title"] = isNew ? $"New {kind} entry" : $"Edit {kind} entry";
+    Layout = "_InvestProLayout";
+    var formAction = isNew
+        ? $"/investpro/admin/investments/{inv!.Id}/ledger/{kindSlug}/create"
+        : $"/investpro/admin/investments/{inv!.Id}/ledger/{kindSlug}/{Model.Id}/edit";
+}
+
+<div class="d-flex align-items-center mb-3 gap-2">
+    <a href="/investpro/admin/investments/@inv!.Id/ledger/@kindSlug" class="btn btn-sm btn-outline-secondary">← Back</a>
+    <h4 class="mb-0">@ViewData["Title"] <span class="text-muted fw-normal small ms-2">@inv.Code</span></h4>
+</div>
+
+@if (TempData["Error"] is string er) { <div class="alert alert-danger py-2">@er</div> }
+
+<form method="post" action="@formAction" enctype="multipart/form-data">
+    @Html.AntiForgeryToken()
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-header"><strong>Core</strong></div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Transaction Date <span class="text-danger">*</span></label>
+                    <input type="date" name="TransactionDate" value="@Model.TransactionDate.ToString("yyyy-MM-dd")" class="form-control" required />
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Description <span class="text-danger">*</span></label>
+                    <input type="text" name="Description" value="@Model.Description" class="form-control" maxlength="300" required />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Partner <span class="text-danger">*</span></label>
+                    <select name="PartnerId" class="form-select" required>
+                        <option value="">— Select —</option>
+                        @foreach (var p in partnerOptions)
+                        {
+                            if (p.Id == Model.PartnerId) { <option value="@p.Id" selected>@p.Name</option> }
+                            else { <option value="@p.Id">@p.Name</option> }
+                        }
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Details</label>
+                    <textarea name="Details" class="form-control" rows="3" maxlength="2000" placeholder="Long-form context. Useful for 'Others' categories or special situations.">@Model.Details</textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (kind == LedgerKind.Capital && Model is CapitalContribution cap)
+    {
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><strong>Capital Contribution</strong></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Amount (BDT) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0" name="Amount" value="@cap.Amount" class="form-control" required />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Contribution Type</label>
+                        <select name="ContributionType" class="form-select">
+                            @foreach (var t in Enum.GetValues<ContributionType>()) { if (cap.ContributionType == t) { <option value="@t" selected>@t</option> } else { <option value="@t">@t</option> } }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Payment Method</label>
+                        <select name="PaymentMethod" class="form-select">
+                            @foreach (var t in Enum.GetValues<PaymentMethod>()) { if (cap.PaymentMethod == t) { <option value="@t" selected>@t</option> } else { <option value="@t">@t</option> } }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Asset Description (in-kind)</label>
+                        <input type="text" name="AssetDescription" value="@cap.AssetDescription" class="form-control" maxlength="500" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Reference No</label>
+                        <input type="text" name="ReferenceNo" value="@cap.ReferenceNo" class="form-control" maxlength="100" placeholder="Deposit slip / transfer reference" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (kind == LedgerKind.Labor && Model is LaborContribution lab)
+    {
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><strong>Labor Contribution</strong></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Unit Type</label>
+                        <select name="UnitType" class="form-select">
+                            @foreach (var t in Enum.GetValues<LaborUnitType>()) { if (lab.UnitType == t) { <option value="@t" selected>@t</option> } else { <option value="@t">@t</option> } }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Hours / Days / Tasks <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0" name="HoursOrDays" value="@lab.HoursOrDays" class="form-control" required />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Rate per Unit (BDT) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0" name="RatePerUnit" value="@lab.RatePerUnit" class="form-control" required />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Computed Amount</label>
+                        <div class="form-control bg-light text-muted">@((lab.HoursOrDays * lab.RatePerUnit).ToString("N2"))</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Task Type</label>
+                        <input type="text" name="TaskType" value="@lab.TaskType" class="form-control" maxlength="100" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Work Description</label>
+                        <input type="text" name="WorkDescription" value="@lab.WorkDescription" class="form-control" maxlength="1000" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (kind == LedgerKind.Expense && Model is Expense exp)
+    {
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><strong>Expense</strong></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Amount (BDT) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0" name="Amount" value="@exp.Amount" class="form-control" required />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Category <span class="text-danger">*</span></label>
+                        <select name="ExpenseCategoryId" class="form-select" required>
+                            <option value="">— Select —</option>
+                            @foreach (var c in categoryOptions)
+                            {
+                                if (c.Id == exp.ExpenseCategoryId) { <option value="@c.Id" selected>@c.Name</option> }
+                                else { <option value="@c.Id">@c.Name</option> }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Payment Method</label>
+                        <select name="PaymentMethod" class="form-select">
+                            @foreach (var t in Enum.GetValues<PaymentMethod>()) { if (exp.PaymentMethod == t) { <option value="@t" selected>@t</option> } else { <option value="@t">@t</option> } }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Paid To</label>
+                        <input type="text" name="PaidTo" value="@exp.PaidTo" class="form-control" maxlength="200" placeholder="Vendor or person" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Receipt No</label>
+                        <input type="text" name="ReceiptNo" value="@exp.ReceiptNo" class="form-control" maxlength="100" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (kind == LedgerKind.Revenue && Model is Revenue rev)
+    {
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><strong>Revenue</strong></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Amount (BDT) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0" name="Amount" value="@rev.Amount" class="form-control" required />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Source Type</label>
+                        <select name="SourceType" class="form-select">
+                            @foreach (var t in Enum.GetValues<RevenueSourceType>()) { if (rev.SourceType == t) { <option value="@t" selected>@t</option> } else { <option value="@t">@t</option> } }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Invoice No</label>
+                        <input type="text" name="InvoiceNo" value="@rev.InvoiceNo" class="form-control" maxlength="100" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Customer</label>
+                        <input type="text" name="Customer" value="@rev.Customer" class="form-control" maxlength="200" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Sales Channel</label>
+                        <input type="text" name="SalesChannel" value="@rev.SalesChannel" class="form-control" maxlength="100" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-header"><strong>Notes & Attachments</strong></div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">Notes</label>
+                <textarea name="Notes" class="form-control" rows="2" maxlength="2000">@Model.Notes</textarea>
+            </div>
+
+            @if (!isNew && attachments.Any())
+            {
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">Existing attachments</div>
+                    <div class="list-group">
+                        @foreach (var a in attachments)
+                        {
+                            <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                <div>
+                                    <a href="@a.FilePath" target="_blank" class="text-decoration-none">@a.FileName</a>
+                                    <span class="badge text-bg-light text-dark ms-2 small">@a.AttachmentLabel</span>
+                                    <span class="text-muted small ms-2">@((a.FileSize/1024.0).ToString("N1")) KB</span>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        data-fcms-action="delete"
+                                        data-url="/investpro/admin/investments/@inv!.Id/ledger/@kindSlug/@Model.Id/attachments/@a.Id/delete"
+                                        data-confirm-title="Remove attachment?"
+                                        data-confirm-message="@a.FileName"
+                                        data-confirm-variant="danger"
+                                        data-confirm-label="Remove">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div>
+                <label class="form-label">Add files (vouchers, receipts, photos)</label>
+                <input type="file" name="files" class="form-control" multiple id="ledger-files" />
+                <div class="form-text small">Max 10 MB per file, up to 20 files. Hold Ctrl/Cmd to select multiple.</div>
+                <div id="file-labels" class="mt-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <button type="submit" class="btn btn-primary">@(isNew ? "Save Entry" : "Save Changes")</button>
+        <a href="/investpro/admin/investments/@inv!.Id/ledger/@kindSlug" class="btn btn-outline-secondary ms-2">Cancel</a>
+    </div>
+</form>
+
+<script>
+    document.getElementById('ledger-files')?.addEventListener('change', function () {
+        var container = document.getElementById('file-labels');
+        container.innerHTML = '';
+        Array.from(this.files).forEach((f, idx) => {
+            var row = document.createElement('div');
+            row.className = 'd-flex align-items-center gap-2 mb-1 small';
+            row.innerHTML =
+                '<i class="bi bi-paperclip"></i><span class="flex-grow-1">' + f.name + ' <span class="text-muted">(' + (f.size/1024).toFixed(1) + ' KB)</span></span>' +
+                '<select name="AttachmentLabels" class="form-select form-select-sm" style="width:120px">' +
+                '<option value="Voucher">Voucher</option>' +
+                '<option value="Invoice">Invoice</option>' +
+                '<option value="Receipt">Receipt</option>' +
+                '<option value="Photo">Photo</option>' +
+                '<option value="Document">Document</option>' +
+                '<option value="Other" selected>Other</option>' +
+                '</select>';
+            container.appendChild(row);
+        });
+    });
+</script>

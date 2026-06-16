@@ -165,6 +165,9 @@ public class InvestProModule : BaseModule
         new(InvestProPermissions.InvestmentEditKey,        "Edit investments",             "InvestPro"),
         new(InvestProPermissions.InvestmentDeleteKey,      "Delete investments",           "InvestPro"),
         new(InvestProPermissions.InvestmentActivateKey,    "Activate investments",         "InvestPro"),
+
+        new(InvestProPermissions.LedgerViewKey,            "View ledger entries",          "InvestPro"),
+        new(InvestProPermissions.LedgerWriteKey,           "Create/edit/delete ledger entries", "InvestPro"),
     ];
 }
 
@@ -189,6 +192,9 @@ public static class InvestProPermissions
     public const string InvestmentDeleteKey   = "investment.delete";
     public const string InvestmentActivateKey = "investment.activate";
 
+    public const string LedgerViewKey  = "ledger.view";
+    public const string LedgerWriteKey = "ledger.write";
+
     private const string P = "flexcms.investpro.";
 
     public const string PartnerView   = P + PartnerViewKey;
@@ -209,4 +215,7 @@ public static class InvestProPermissions
     public const string InvestmentEdit     = P + InvestmentEditKey;
     public const string InvestmentDelete   = P + InvestmentDeleteKey;
     public const string InvestmentActivate = P + InvestmentActivateKey;
+
+    public const string LedgerView  = P + LedgerViewKey;
+    public const string LedgerWrite = P + LedgerWriteKey;
 }

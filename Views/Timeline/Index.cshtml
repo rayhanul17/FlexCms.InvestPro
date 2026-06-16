@@ -1,0 +1,135 @@
+@model List<FlexCms.InvestPro.Services.TimelineItem>
+@{
+    var inv = ViewData["Investment"] as Investment;
+    var summary = ViewData["Summary"] as FlexCms.InvestPro.Services.LedgerSummary;
+    var filterKind = ViewData["FilterKind"] as LedgerKind?;
+    var searchQuery = ViewData["SearchQuery"] as string;
+    ViewData["Title"] = $"Timeline — {inv?.Code}";
+    Layout = "_InvestProLayout";
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3 gap-2 flex-wrap">
+    <div>
+        <a href="/investpro/admin/investments/@inv!.Id" class="btn btn-sm btn-outline-secondary mb-2">← Investment detail</a>
+        <h4 class="mb-1">Timeline — @inv.Code <span class="text-muted fw-normal">@inv.Name</span></h4>
+        <small class="text-muted">All ledger activity in chronological order.</small>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="/investpro/admin/investments/@inv.Id/ledger/capital/create" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Capital</a>
+        <a href="/investpro/admin/investments/@inv.Id/ledger/labor/create"   class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Labor</a>
+        <a href="/investpro/admin/investments/@inv.Id/ledger/expense/create" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Expense</a>
+        <a href="/investpro/admin/investments/@inv.Id/ledger/revenue/create" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Revenue</a>
+    </div>
+</div>
+
+@if (summary is not null)
+{
+    <div class="row g-2 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="card shadow-sm h-100"><div class="card-body py-2">
+                <div class="small text-muted">Total Capital (@summary.CapitalCount)</div>
+                <div class="h5 mb-0 text-primary">@summary.TotalCapital.ToString("N2")</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card shadow-sm h-100"><div class="card-body py-2">
+                <div class="small text-muted">Total Labor Value (@summary.LaborCount)</div>
+                <div class="h5 mb-0 text-info">@summary.TotalLabor.ToString("N2")</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card shadow-sm h-100"><div class="card-body py-2">
+                <div class="small text-muted">Total Expenses (@summary.ExpenseCount)</div>
+                <div class="h5 mb-0 text-danger">@summary.TotalExpenses.ToString("N2")</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card shadow-sm h-100"><div class="card-body py-2">
+                <div class="small text-muted">Total Revenue (@summary.RevenueCount)</div>
+                <div class="h5 mb-0 text-success">@summary.TotalRevenue.ToString("N2")</div>
+            </div></div>
+        </div>
+    </div>
+    <div class="alert @(summary.NetPosition >= 0 ? "alert-success" : "alert-warning") py-2 mb-3">
+        <strong>Net (Revenue − Expense):</strong> @summary.NetPosition.ToString("N2") BDT
+        <span class="text-muted small ms-2">— this is a running tally; final profit/loss requires close.</span>
+    </div>
+}
+
+<form method="get" class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <select name="kind" class="form-select form-select-sm">
+                    <option value="">All ledgers</option>
+                    @foreach (var k in Enum.GetValues<LedgerKind>())
+                    {
+                        if (filterKind == k) { <option value="@k" selected>@k</option> }
+                        else { <option value="@k">@k</option> }
+                    }
+                </select>
+            </div>
+            <div class="col-md-7">
+                <input type="text" name="q" value="@searchQuery" class="form-control form-control-sm" placeholder="Search description, partner, category…" />
+            </div>
+            <div class="col-md-2 d-grid">
+                <button type="submit" class="btn btn-sm btn-secondary">Filter</button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light small">
+                <tr>
+                    <th style="width:110px">Date</th>
+                    <th style="width:90px">Ledger</th>
+                    <th>Description</th>
+                    <th style="width:160px">Partner</th>
+                    <th style="width:120px">Category</th>
+                    <th class="text-end" style="width:140px">Amount</th>
+                    <th style="width:110px">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr><td colspan="7" class="text-center text-muted py-3">No entries match.</td></tr>
+                }
+                @foreach (var item in Model)
+                {
+                    var (badgeCls, isCredit) = item.Kind switch
+                    {
+                        LedgerKind.Capital => ("text-bg-primary", true),
+                        LedgerKind.Labor   => ("text-bg-info",    true),
+                        LedgerKind.Expense => ("text-bg-danger",  false),
+                        LedgerKind.Revenue => ("text-bg-success", true),
+                        _ => ("text-bg-secondary", true),
+                    };
+                    var ledgerSlug = item.Kind.ToString().ToLower();
+                    <tr>
+                        <td class="small text-muted">@item.TransactionDate.ToString("yyyy-MM-dd")</td>
+                        <td><span class="badge @badgeCls">@item.Kind</span></td>
+                        <td>
+                            <a href="/investpro/admin/investments/@inv!.Id/ledger/@ledgerSlug/@item.Id/edit" class="text-decoration-none">@item.Description</a>
+                        </td>
+                        <td class="small">@item.PartnerName</td>
+                        <td class="small text-muted">@(item.CategoryName ?? "—")</td>
+                        <td class="text-end fw-medium @(isCredit ? "text-success" : "text-danger")">@(isCredit ? "+" : "−")@item.Amount.ToString("N2")</td>
+                        <td>
+                            @switch (item.ApprovalStatus)
+                            {
+                                case LedgerApprovalStatus.AutoApproved: <span class="badge text-bg-success">Auto</span> break;
+                                case LedgerApprovalStatus.Pending:      <span class="badge text-bg-warning">Pending</span> break;
+                                case LedgerApprovalStatus.Approved:     <span class="badge text-bg-success">Approved</span> break;
+                                case LedgerApprovalStatus.Rejected:     <span class="badge text-bg-secondary">Rejected</span> break;
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

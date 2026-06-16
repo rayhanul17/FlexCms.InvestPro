@@ -15,6 +15,11 @@ public class InvestProDbContext : DbContext
     public DbSet<ApprovalConfig> ApprovalConfigs => Set<ApprovalConfig>();
     public DbSet<Investment> Investments => Set<Investment>();
     public DbSet<InvestmentPartner> InvestmentPartners => Set<InvestmentPartner>();
+    public DbSet<CapitalContribution> CapitalContributions => Set<CapitalContribution>();
+    public DbSet<LaborContribution> LaborContributions => Set<LaborContribution>();
+    public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<Revenue> Revenues => Set<Revenue>();
+    public DbSet<LedgerAttachment> LedgerAttachments => Set<LedgerAttachment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -95,6 +100,86 @@ public class InvestProDbContext : DbContext
              .WithMany()
              .HasForeignKey(c => c.PartnerId)
              .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CapitalContribution>(e =>
+        {
+            e.Property(x => x.Amount).HasColumnType("numeric(18,2)");
+            e.Property(x => x.Description).HasMaxLength(300).IsRequired();
+            e.Property(x => x.Details).HasMaxLength(2000);
+            e.Property(x => x.ContributionType).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.AssetDescription).HasMaxLength(500);
+            e.Property(x => x.PaymentMethod).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.ReferenceNo).HasMaxLength(100);
+            e.Property(x => x.ApprovalStatus).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.HasIndex(x => x.InvestmentId);
+            e.HasIndex(x => x.TransactionDate);
+            e.HasOne(x => x.Investment!).WithMany().HasForeignKey(x => x.InvestmentId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Partner!).WithMany().HasForeignKey(x => x.PartnerId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<LaborContribution>(e =>
+        {
+            e.Property(x => x.Amount).HasColumnType("numeric(18,2)");
+            e.Property(x => x.Description).HasMaxLength(300).IsRequired();
+            e.Property(x => x.Details).HasMaxLength(2000);
+            e.Property(x => x.HoursOrDays).HasColumnType("numeric(10,2)");
+            e.Property(x => x.RatePerUnit).HasColumnType("numeric(18,2)");
+            e.Property(x => x.UnitType).HasConversion<string>().HasMaxLength(10).IsRequired();
+            e.Property(x => x.TaskType).HasMaxLength(100);
+            e.Property(x => x.WorkDescription).HasMaxLength(1000);
+            e.Property(x => x.ApprovalStatus).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.HasIndex(x => x.InvestmentId);
+            e.HasIndex(x => x.TransactionDate);
+            e.HasOne(x => x.Investment!).WithMany().HasForeignKey(x => x.InvestmentId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Partner!).WithMany().HasForeignKey(x => x.PartnerId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Expense>(e =>
+        {
+            e.Property(x => x.Amount).HasColumnType("numeric(18,2)");
+            e.Property(x => x.Description).HasMaxLength(300).IsRequired();
+            e.Property(x => x.Details).HasMaxLength(2000);
+            e.Property(x => x.PaidTo).HasMaxLength(200);
+            e.Property(x => x.PaymentMethod).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.ReceiptNo).HasMaxLength(100);
+            e.Property(x => x.ApprovalStatus).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.HasIndex(x => x.InvestmentId);
+            e.HasIndex(x => x.TransactionDate);
+            e.HasIndex(x => x.ExpenseCategoryId);
+            e.HasOne(x => x.Investment!).WithMany().HasForeignKey(x => x.InvestmentId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Partner!).WithMany().HasForeignKey(x => x.PartnerId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Category!).WithMany().HasForeignKey(x => x.ExpenseCategoryId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Revenue>(e =>
+        {
+            e.Property(x => x.Amount).HasColumnType("numeric(18,2)");
+            e.Property(x => x.Description).HasMaxLength(300).IsRequired();
+            e.Property(x => x.Details).HasMaxLength(2000);
+            e.Property(x => x.SourceType).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.Customer).HasMaxLength(200);
+            e.Property(x => x.SalesChannel).HasMaxLength(100);
+            e.Property(x => x.InvoiceNo).HasMaxLength(100);
+            e.Property(x => x.ApprovalStatus).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.HasIndex(x => x.InvestmentId);
+            e.HasIndex(x => x.TransactionDate);
+            e.HasOne(x => x.Investment!).WithMany().HasForeignKey(x => x.InvestmentId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Partner!).WithMany().HasForeignKey(x => x.PartnerId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<LedgerAttachment>(e =>
+        {
+            e.Property(x => x.LedgerType).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.FilePath).HasMaxLength(500).IsRequired();
+            e.Property(x => x.FileName).HasMaxLength(255).IsRequired();
+            e.Property(x => x.FileType).HasMaxLength(100);
+            e.Property(x => x.AttachmentLabel).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.HasIndex(x => new { x.LedgerType, x.LedgerEntryId });
         });
     }
 
@@ -211,4 +296,113 @@ public class InvestmentPartner : BaseEfEntity
 
     public DateTime JoinedDate { get; set; }
     public string? SpecialTerms { get; set; }
+}
+
+public enum ContributionType
+{
+    Cash   = 1,
+    InKind = 2,
+}
+
+public enum PaymentMethod
+{
+    Cash   = 1,
+    Bank   = 2,
+    MFS    = 3,
+    Cheque = 4,
+    Other  = 5,
+}
+
+public enum LaborUnitType
+{
+    Hours = 1,
+    Days  = 2,
+    Task  = 3,
+}
+
+public enum RevenueSourceType
+{
+    Sales   = 1,
+    Service = 2,
+    Other   = 3,
+}
+
+public enum LedgerApprovalStatus
+{
+    AutoApproved = 1,
+    Pending      = 2,
+    Approved     = 3,
+    Rejected     = 4,
+}
+
+public enum AttachmentLabel
+{
+    Voucher  = 1,
+    Invoice  = 2,
+    Receipt  = 3,
+    Photo    = 4,
+    Document = 5,
+    Other    = 6,
+}
+
+public abstract class LedgerEntryBase : BaseEfEntity
+{
+    public Guid InvestmentId { get; set; }
+    public Investment? Investment { get; set; }
+
+    public Guid PartnerId { get; set; }
+    public Partner? Partner { get; set; }
+
+    public DateTime TransactionDate { get; set; }
+    public DateTime EntryDate { get; set; }
+    public decimal Amount { get; set; }
+    public string Description { get; set; } = "";
+    public string? Details { get; set; }
+    public LedgerApprovalStatus ApprovalStatus { get; set; } = LedgerApprovalStatus.AutoApproved;
+    public string? Notes { get; set; }
+}
+
+public class CapitalContribution : LedgerEntryBase
+{
+    public ContributionType ContributionType { get; set; } = ContributionType.Cash;
+    public string? AssetDescription { get; set; }
+    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
+    public string? ReferenceNo { get; set; }
+}
+
+public class LaborContribution : LedgerEntryBase
+{
+    public LaborUnitType UnitType { get; set; } = LaborUnitType.Hours;
+    public decimal HoursOrDays { get; set; }
+    public decimal RatePerUnit { get; set; }
+    public string? TaskType { get; set; }
+    public string? WorkDescription { get; set; }
+}
+
+public class Expense : LedgerEntryBase
+{
+    public Guid ExpenseCategoryId { get; set; }
+    public ExpenseCategory? Category { get; set; }
+    public string? PaidTo { get; set; }
+    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
+    public string? ReceiptNo { get; set; }
+}
+
+public class Revenue : LedgerEntryBase
+{
+    public RevenueSourceType SourceType { get; set; } = RevenueSourceType.Sales;
+    public string? Customer { get; set; }
+    public string? SalesChannel { get; set; }
+    public string? InvoiceNo { get; set; }
+}
+
+public class LedgerAttachment : BaseEfEntity
+{
+    public LedgerKind LedgerType { get; set; }
+    public Guid LedgerEntryId { get; set; }
+    public string FilePath { get; set; } = "";
+    public string FileName { get; set; } = "";
+    public string? FileType { get; set; }
+    public long FileSize { get; set; }
+    public AttachmentLabel AttachmentLabel { get; set; } = AttachmentLabel.Other;
 }
