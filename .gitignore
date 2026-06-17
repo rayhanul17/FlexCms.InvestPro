@@ -21,3 +21,6 @@ Thumbs.db
 
 ## Runtime uploads (per-module, served from wwwroot/uploads/)
 wwwroot/uploads/
+
+## Packaged build output produced by build-package.{sh,ps1}
+dist/
