@@ -1,4 +1,3 @@
-using FlexCms.Framework.Modules;
 using FlexCms.Framework.Modules.Attributes;
 using FlexCms.Framework.Storage;
 using FlexCms.InvestPro.Data;
@@ -11,17 +10,14 @@ namespace FlexCms.InvestPro.Services;
 [FcmsScoped]
 public class AttachmentService
 {
-    private readonly ModuleActivationOptions _opts;
+    private readonly InvestProDbContext _db;
     private readonly IFcmsFileUploadService _uploader;
 
-    public AttachmentService(ModuleActivationOptions opts, IFcmsFileUploadService uploader)
+    public AttachmentService(InvestProDbContext db, IFcmsFileUploadService uploader)
     {
-        _opts = opts;
+        _db = db;
         _uploader = uploader;
     }
-
-    private InvestProDbContext OpenDb() =>
-        (InvestProDbContext)new InvestProModule().CreateMigrationContext(_opts.ConnectionString, _opts.Provider)!;
 
     public const long MaxFileSize = 10 * 1024 * 1024; // 10 MB
     public const int MaxFilesPerOwner = 20;
@@ -48,14 +44,11 @@ public class AttachmentService
         _ => "misc",
     };
 
-    public async Task<List<LedgerAttachment>> GetForOwnerAsync(AttachmentOwnerType ownerType, Guid ownerId, CancellationToken ct = default)
-    {
-        await using var db = OpenDb();
-        return await db.LedgerAttachments
+    public Task<List<LedgerAttachment>> GetForOwnerAsync(AttachmentOwnerType ownerType, Guid ownerId, CancellationToken ct = default)
+        => _db.LedgerAttachments
             .Where(x => x.OwnerType == ownerType && x.OwnerId == ownerId && x.Status != EntityStatus.Deleted)
             .OrderBy(x => x.CreatedAt)
             .ToListAsync(ct);
-    }
 
     // ── Back-compat shim for ledger-entry-only callers ──────────────────
     public Task<List<LedgerAttachment>> GetForEntryAsync(LedgerKind kind, Guid entryId, CancellationToken ct = default)
@@ -68,11 +61,8 @@ public class AttachmentService
             _ => AttachmentOwnerType.Investment,
         }, entryId, ct);
 
-    public async Task<LedgerAttachment?> GetByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var db = OpenDb();
-        return await db.LedgerAttachments.FirstOrDefaultAsync(x => x.Id == id, ct);
-    }
+    public Task<LedgerAttachment?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => _db.LedgerAttachments.FirstOrDefaultAsync(x => x.Id == id, ct);
 
     public async Task<(bool ok, string? error, LedgerAttachment? saved)> UploadAsync(
         AttachmentOwnerType ownerType, Guid ownerId,
@@ -82,8 +72,7 @@ public class AttachmentService
         if (file is null || file.Length == 0) return (false, "No file uploaded.", null);
         if (file.Length > MaxFileSize) return (false, $"File too large. Max {MaxFileSize / 1024 / 1024} MB.", null);
 
-        await using var db = OpenDb();
-        var existing = await db.LedgerAttachments.CountAsync(
+        var existing = await _db.LedgerAttachments.CountAsync(
             x => x.OwnerType == ownerType && x.OwnerId == ownerId && x.Status != EntityStatus.Deleted, ct);
         if (existing >= MaxFilesPerOwner)
             return (false, $"Maximum {MaxFilesPerOwner} files per owner reached.", null);
@@ -117,8 +106,8 @@ public class AttachmentService
             FileSize = result.FileSize,
             AttachmentLabel = label,
         };
-        db.LedgerAttachments.Add(row);
-        await db.SaveChangesAsync(ct);
+        _db.LedgerAttachments.Add(row);
+        await _db.SaveChangesAsync(ct);
         return (true, null, row);
     }
 
@@ -137,13 +126,12 @@ public class AttachmentService
 
     public async Task<(bool ok, string? error, LedgerAttachment? deleted)> DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        await using var db = OpenDb();
-        var row = await db.LedgerAttachments.FirstOrDefaultAsync(x => x.Id == id, ct);
+        var row = await _db.LedgerAttachments.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (row is null) return (false, "Not found.", null);
 
         row.Status = EntityStatus.Deleted;
         row.DeletedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync(ct);
+        await _db.SaveChangesAsync(ct);
 
         try { await _uploader.DeleteAsync(InvestProModule.ModuleIdValue, row.FilePath, ct); }
         catch { /* best-effort */ }

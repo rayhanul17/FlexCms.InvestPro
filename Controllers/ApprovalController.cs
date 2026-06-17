@@ -45,6 +45,21 @@ public class ApprovalController : InvestProControllerBase
         if (req is null) return NotFound();
         var inv = await _investments.GetByIdAsync(req.InvestmentId, ct);
         ViewData["Investment"] = inv;
+        // Resolve partner names for the all-partner decisions table. Without
+        // this the view falls back to raw GUIDs because ApprovalDecision
+        // doesn't carry a Partner navigation prop.
+        var partnerIds = req.Decisions
+            .Where(d => d.PartnerId.HasValue)
+            .Select(d => d.PartnerId!.Value)
+            .Distinct()
+            .ToList();
+        var partnerMap = new Dictionary<Guid, string>();
+        foreach (var pid in partnerIds)
+        {
+            var p = await _partners.GetByIdAsync(pid, ct);
+            if (p is not null) partnerMap[pid] = p.Name;
+        }
+        ViewData["PartnerNames"] = partnerMap;
         return View(req);
     }
 

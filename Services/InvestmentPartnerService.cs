@@ -1,7 +1,5 @@
 using FlexCms.Framework.Db;
 using FlexCms.Framework.Db.Ef;
-using DbModels = FlexCms.Framework.Db;
-using FlexCms.Framework.Modules;
 using FlexCms.Framework.Modules.Attributes;
 using FlexCms.InvestPro.Data;
 using Microsoft.EntityFrameworkCore;
@@ -11,37 +9,32 @@ namespace FlexCms.InvestPro.Services;
 [FcmsScoped]
 public class InvestmentPartnerService
 {
-    private readonly ModuleActivationOptions _opts;
+    private readonly InvestProDbContext _db;
     private readonly ReopenRequestService _reopens;
-    public InvestmentPartnerService(ModuleActivationOptions opts, ReopenRequestService reopens)
+    public InvestmentPartnerService(InvestProDbContext db, ReopenRequestService reopens)
     {
-        _opts = opts;
+        _db = db;
         _reopens = reopens;
     }
 
-    private InvestProDbContext OpenDb() =>
-        (InvestProDbContext)new InvestProModule().CreateMigrationContext(_opts.ConnectionString, _opts.Provider)!;
-
-    public async Task<List<InvestmentPartner>> GetByInvestmentAsync(Guid investmentId, CancellationToken ct = default)
-    {
-        await using var db = OpenDb();
-        return await db.InvestmentPartners
+    public Task<List<InvestmentPartner>> GetByInvestmentAsync(Guid investmentId, CancellationToken ct = default)
+        => _db.InvestmentPartners
             .Include(x => x.Partner)
-            .Where(x => x.InvestmentId == investmentId && x.Status != DbModels.EntityStatus.Deleted)
+            .Where(x => x.InvestmentId == investmentId && x.Status != EntityStatus.Deleted)
             .OrderBy(x => x.JoinedDate)
             .ToListAsync(ct);
-    }
 
-    public async Task<InvestmentPartner?> GetByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var db = OpenDb();
-        return await db.InvestmentPartners
+    public Task<InvestmentPartner?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => _db.InvestmentPartners
             .Include(x => x.Partner)
             .Include(x => x.Investment)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
-    }
 
-    // ── Shared-context queries (for orchestrators like CloseService) ────
+    // ── Shared-context queries (kept for orchestrator ergonomics) ────
+    // With DbContext now scoped per request, the `db` argument passed by
+    // an orchestrator is the same instance as our `_db`. These methods
+    // remain so callers can express "operate on my transaction" intent
+    // without changing the rest of their flow.
 
     public Task<List<InvestmentPartner>> GetByInvestmentOnContextAsync(InvestProDbContext db, Guid investmentId, CancellationToken ct = default)
         => db.InvestmentPartners
@@ -63,26 +56,25 @@ public class InvestmentPartnerService
     /// Approved reopen (the Active snapshot it points to stays Active until
     /// the reclose generates v2 and demotes it).
     /// </summary>
-    private async Task<bool> IsContractEditableAsync(InvestProDbContext db, Investment inv, CancellationToken ct)
+    private async Task<bool> IsContractEditableAsync(Investment inv, CancellationToken ct)
     {
         if (inv.LifecycleStatus == InvestmentLifecycle.Draft) return true;
         if (inv.LifecycleStatus == InvestmentLifecycle.Active)
-            return await _reopens.HasApprovedForInvestmentOnContextAsync(db, inv.Id, ct);
+            return await _reopens.HasApprovedForInvestmentOnContextAsync(_db, inv.Id, ct);
         return false;
     }
 
     public async Task<(bool ok, string? error, InvestmentPartner? saved)> AddAsync(Guid investmentId, InvestmentPartner model, CancellationToken ct = default)
     {
-        await using var db = OpenDb();
-        var inv = await db.Investments.FirstOrDefaultAsync(x => x.Id == investmentId, ct);
+        var inv = await _db.Investments.FirstOrDefaultAsync(x => x.Id == investmentId, ct);
         if (inv is null) return (false, "Investment not found.", null);
-        if (!await IsContractEditableAsync(db, inv, ct))
+        if (!await IsContractEditableAsync(inv, ct))
             return (false, "Partners can only be added to Draft investments (or post-reopen Active).", null);
 
-        var partnerExists = await db.Partners.AnyAsync(x => x.Id == model.PartnerId, ct);
+        var partnerExists = await _db.Partners.AnyAsync(x => x.Id == model.PartnerId, ct);
         if (!partnerExists) return (false, "Partner not found.", null);
 
-        var duplicate = await db.InvestmentPartners
+        var duplicate = await _db.InvestmentPartners
             .AnyAsync(x => x.InvestmentId == investmentId && x.PartnerId == model.PartnerId, ct);
         if (duplicate) return (false, "This partner is already part of the investment.", null);
 
@@ -94,20 +86,19 @@ public class InvestmentPartnerService
         if (model.JoinedDate == default) model.JoinedDate = DateTime.UtcNow;
         model.JoinedDate = DateTime.SpecifyKind(model.JoinedDate, DateTimeKind.Utc);
 
-        var repo = new EfRepository<InvestmentPartner>(db);
+        var repo = new EfRepository<InvestmentPartner>(_db);
         await repo.AddAsync(model, ct);
-        await db.SaveChangesAsync(ct);
+        await _db.SaveChangesAsync(ct);
         return (true, null, model);
     }
 
     public async Task<(bool ok, string? error)> UpdateAsync(Guid id, InvestmentPartner input, CancellationToken ct = default)
     {
-        await using var db = OpenDb();
-        var row = await db.InvestmentPartners
+        var row = await _db.InvestmentPartners
             .Include(x => x.Investment)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (row is null) return (false, "Not found.");
-        if (row.Investment is null || !await IsContractEditableAsync(db, row.Investment, ct))
+        if (row.Investment is null || !await IsContractEditableAsync(row.Investment, ct))
             return (false, "Contracts can only be edited while the investment is in Draft state (or post-reopen Active).");
 
         var err = ValidateContract(input);
@@ -120,23 +111,22 @@ public class InvestmentPartnerService
         row.ProfitSharePercent  = input.ProfitSharePercent;
         row.LossSharePercent    = input.LossSharePercent;
         row.SpecialTerms        = input.SpecialTerms?.Trim();
-        await db.SaveChangesAsync(ct);
+        await _db.SaveChangesAsync(ct);
         return (true, null);
     }
 
     public async Task<(bool ok, string? error)> RemoveAsync(Guid id, CancellationToken ct = default)
     {
-        await using var db = OpenDb();
-        var row = await db.InvestmentPartners
+        var row = await _db.InvestmentPartners
             .Include(x => x.Investment)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (row is null) return (false, "Not found.");
-        if (row.Investment is null || !await IsContractEditableAsync(db, row.Investment, ct))
+        if (row.Investment is null || !await IsContractEditableAsync(row.Investment, ct))
             return (false, "Contracts can only be removed while the investment is in Draft state (or post-reopen Active).");
 
-        var repo = new EfRepository<InvestmentPartner>(db);
+        var repo = new EfRepository<InvestmentPartner>(_db);
         await repo.SoftDeleteAsync(row, ct);
-        await db.SaveChangesAsync(ct);
+        await _db.SaveChangesAsync(ct);
         return (true, null);
     }
 

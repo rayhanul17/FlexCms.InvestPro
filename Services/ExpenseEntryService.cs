@@ -1,4 +1,3 @@
-using FlexCms.Framework.Modules;
 using FlexCms.Framework.Modules.Attributes;
 using FlexCms.InvestPro.Data;
 using EntityStatus = FlexCms.Framework.Db.EntityStatus;
@@ -9,20 +8,17 @@ namespace FlexCms.InvestPro.Services;
 [FcmsScoped]
 public class ExpenseEntryService : LedgerServiceBase<Expense>
 {
-    public ExpenseEntryService(ModuleActivationOptions opts) : base(opts) { }
+    public ExpenseEntryService(InvestProDbContext db) : base(db) { }
     protected override DbSet<Expense> Set(InvestProDbContext db) => db.Expenses;
     protected override LedgerKind Kind => LedgerKind.Expense;
 
-    public override async Task<List<Expense>> GetByInvestmentAsync(Guid investmentId, CancellationToken ct = default)
-    {
-        await using var db = OpenDb();
-        return await db.Expenses
+    public override Task<List<Expense>> GetByInvestmentAsync(Guid investmentId, CancellationToken ct = default)
+        => Db.Expenses
             .Include(x => x.Partner)
             .Include(x => x.Category)
             .Where(x => x.InvestmentId == investmentId && x.Status != EntityStatus.Deleted)
             .OrderByDescending(x => x.TransactionDate)
             .ToListAsync(ct);
-    }
 
     protected override void CopyForUpdate(Expense from, Expense to)
     {

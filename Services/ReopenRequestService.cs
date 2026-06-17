@@ -1,4 +1,3 @@
-using FlexCms.Framework.Modules;
 using FlexCms.Framework.Modules.Attributes;
 using FlexCms.InvestPro.Data;
 using Microsoft.EntityFrameworkCore;
@@ -14,45 +13,33 @@ namespace FlexCms.InvestPro.Services;
 [FcmsScoped]
 public class ReopenRequestService
 {
-    private readonly ModuleActivationOptions _opts;
-    public ReopenRequestService(ModuleActivationOptions opts) => _opts = opts;
-
-    private InvestProDbContext OpenDb() =>
-        (InvestProDbContext)new InvestProModule().CreateMigrationContext(_opts.ConnectionString, _opts.Provider)!;
+    private readonly InvestProDbContext _db;
+    public ReopenRequestService(InvestProDbContext db) => _db = db;
 
     // ── Queries ─────────────────────────────────────────────────────────
 
-    public async Task<List<ReopenRequest>> GetByInvestmentAsync(Guid investmentId, CancellationToken ct = default)
-    {
-        await using var db = OpenDb();
-        return await db.ReopenRequests
+    public Task<List<ReopenRequest>> GetByInvestmentAsync(Guid investmentId, CancellationToken ct = default)
+        => _db.ReopenRequests
             .Include(r => r.Approvals)
             .Where(r => r.InvestmentId == investmentId && r.Status != EntityStatus.Deleted)
             .OrderByDescending(r => r.InitiatedAt)
             .ToListAsync(ct);
-    }
 
-    public async Task<ReopenRequest?> GetByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var db = OpenDb();
-        return await db.ReopenRequests
+    public Task<ReopenRequest?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => _db.ReopenRequests
             .Include(r => r.Approvals)
             .FirstOrDefaultAsync(r => r.Id == id, ct);
-    }
 
     /// <summary>
     /// True if the investment has an Approved reopen sitting un-recloseable.
     /// This is the signal for "post-reopen Active" — contracts are editable
     /// and the Close button is shown until the reclose generates v2.
     /// </summary>
-    public async Task<bool> HasApprovedForInvestmentAsync(Guid investmentId, CancellationToken ct = default)
-    {
-        await using var db = OpenDb();
-        return await db.ReopenRequests
+    public Task<bool> HasApprovedForInvestmentAsync(Guid investmentId, CancellationToken ct = default)
+        => _db.ReopenRequests
             .AnyAsync(r => r.InvestmentId == investmentId
                            && r.RequestStatus == ReopenRequestStatus.Approved
                            && r.Status != EntityStatus.Deleted, ct);
-    }
 
     // ── Shared-context writers ──────────────────────────────────────────
 

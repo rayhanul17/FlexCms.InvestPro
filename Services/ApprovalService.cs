@@ -1,4 +1,3 @@
-using FlexCms.Framework.Modules;
 using FlexCms.Framework.Modules.Attributes;
 using FlexCms.InvestPro.Data;
 using Microsoft.EntityFrameworkCore;
@@ -9,11 +8,8 @@ namespace FlexCms.InvestPro.Services;
 [FcmsScoped]
 public class ApprovalService
 {
-    private readonly ModuleActivationOptions _opts;
-    public ApprovalService(ModuleActivationOptions opts) => _opts = opts;
-
-    private InvestProDbContext OpenDb() =>
-        (InvestProDbContext)new InvestProModule().CreateMigrationContext(_opts.ConnectionString, _opts.Provider)!;
+    private readonly InvestProDbContext _db;
+    public ApprovalService(InvestProDbContext db) => _db = db;
 
     /// <summary>
     /// Looks at the configured thresholds for this ledger kind and returns
@@ -23,7 +19,7 @@ public class ApprovalService
     /// </summary>
     public async Task<(ApproverMode mode, ApproverRole? role, ApprovalConfig? config)> ResolveModeAsync(LedgerKind kind, decimal amount, CancellationToken ct = default)
     {
-        await using var db = OpenDb();
+        var db = _db;
         var cfg = await db.ApprovalConfigs.FirstOrDefaultAsync(c => c.LedgerType == kind, ct);
         if (cfg is null) return (ApproverMode.Auto, null, null);
 
@@ -48,7 +44,7 @@ public class ApprovalService
     {
         if (mode == ApproverMode.Auto) return null;
 
-        await using var db = OpenDb();
+        var db = _db;
         var req = new ApprovalRequest
         {
             Id = Guid.NewGuid(),
@@ -88,7 +84,7 @@ public class ApprovalService
 
     public async Task<List<ApprovalRequest>> GetPendingForInvestmentAsync(Guid investmentId, CancellationToken ct = default)
     {
-        await using var db = OpenDb();
+        var db = _db;
         return await db.ApprovalRequests
             .Where(r => r.InvestmentId == investmentId && r.RequestStatus == ApprovalRequestStatus.Pending && r.Status != EntityStatus.Deleted)
             .OrderBy(r => r.InitiatedAt)
@@ -97,7 +93,7 @@ public class ApprovalService
 
     public async Task<List<ApprovalRequest>> GetAllPendingAsync(CancellationToken ct = default)
     {
-        await using var db = OpenDb();
+        var db = _db;
         return await db.ApprovalRequests
             .Where(r => r.RequestStatus == ApprovalRequestStatus.Pending && r.Status != EntityStatus.Deleted)
             .OrderBy(r => r.InitiatedAt)
@@ -106,7 +102,7 @@ public class ApprovalService
 
     public async Task<ApprovalRequest?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        await using var db = OpenDb();
+        var db = _db;
         return await db.ApprovalRequests
             .Include(r => r.Decisions)
             .FirstOrDefaultAsync(r => r.Id == id, ct);
@@ -116,7 +112,7 @@ public class ApprovalService
     {
         if (decision == DecisionKind.Pending) return (false, "Pending is not a valid decision.", ApprovalRequestStatus.Pending);
 
-        await using var db = OpenDb();
+        var db = _db;
         var req = await db.ApprovalRequests.Include(r => r.Decisions).FirstOrDefaultAsync(r => r.Id == requestId, ct);
         if (req is null) return (false, "Request not found.", ApprovalRequestStatus.Pending);
         if (req.RequestStatus != ApprovalRequestStatus.Pending) return (false, $"Request is already {req.RequestStatus}.", req.RequestStatus);
@@ -184,7 +180,7 @@ public class ApprovalService
     /// </summary>
     public async Task SetLedgerEntryStatusAsync(LedgerKind kind, Guid entryId, LedgerApprovalStatus status, CancellationToken ct = default)
     {
-        await using var db = OpenDb();
+        var db = _db;
         switch (kind)
         {
             case LedgerKind.Capital:

@@ -4,6 +4,8 @@
     ViewData["Title"] = $"Approval — {inv?.Code}";
     Layout = "_InvestProLayout";
     var isAllPartners = Model.RequiredApproverMode == ApproverMode.AllPartners;
+    var partnerNames = ViewData["PartnerNames"] as Dictionary<Guid, string> ?? new();
+    string nameOf(Guid? id) => id.HasValue && partnerNames.TryGetValue(id.Value, out var n) ? n : (id?.ToString() ?? "—");
 }
 
 <div class="d-flex align-items-center mb-3 gap-2">
@@ -71,7 +73,7 @@
                     @foreach (var d in Model.Decisions)
                     {
                         <tr>
-                            <td class="small">@d.PartnerId</td>
+                            <td class="fw-medium">@nameOf(d.PartnerId)</td>
                             <td>
                                 @switch (d.Decision)
                                 {
@@ -105,7 +107,7 @@
                             <option value="">— Select —</option>
                             @foreach (var d in Model.Decisions.Where(x => x.Decision == DecisionKind.Pending))
                             {
-                                <option value="@d.PartnerId">@d.PartnerId</option>
+                                <option value="@d.PartnerId">@nameOf(d.PartnerId)</option>
                             }
                         </select>
                         <div class="form-text">Only pending partners are listed. Each partner can decide once.</div>

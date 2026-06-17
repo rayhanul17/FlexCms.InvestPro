@@ -1,4 +1,3 @@
-using FlexCms.Framework.Modules;
 using FlexCms.Framework.Modules.Attributes;
 using FlexCms.InvestPro.Data;
 using Microsoft.EntityFrameworkCore;
@@ -21,25 +20,22 @@ namespace FlexCms.InvestPro.Services;
 [FcmsScoped]
 public class ReopenService
 {
-    private readonly ModuleActivationOptions _opts;
+    private readonly InvestProDbContext _db;
     private readonly ReopenRequestService _requests;
     private readonly InvestmentSnapshotService _snapshots;
     private readonly InvestmentPartnerService _partners;
 
     public ReopenService(
-        ModuleActivationOptions opts,
+        InvestProDbContext db,
         ReopenRequestService requests,
         InvestmentSnapshotService snapshots,
         InvestmentPartnerService partners)
     {
-        _opts = opts;
+        _db = db;
         _requests = requests;
         _snapshots = snapshots;
         _partners = partners;
     }
-
-    private InvestProDbContext OpenDb() =>
-        (InvestProDbContext)new InvestProModule().CreateMigrationContext(_opts.ConnectionString, _opts.Provider)!;
 
     public async Task<(bool ok, string? error, ReopenRequest? request)> RequestReopenAsync(
         Guid investmentId, Guid initiatedByUserId, string reason, CancellationToken ct = default)
@@ -47,7 +43,7 @@ public class ReopenService
         if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length < 5)
             return (false, "A reason of at least 5 characters is required.", null);
 
-        await using var db = OpenDb();
+        var db = _db;
         var inv = await db.Investments.FirstOrDefaultAsync(x => x.Id == investmentId, ct);
         if (inv is null) return (false, "Investment not found.", null);
         if (inv.LifecycleStatus != InvestmentLifecycle.Closed)
@@ -103,7 +99,7 @@ public class ReopenService
         if (decision == DecisionKind.Pending)
             return (false, "Pending is not a valid decision.", ReopenRequestStatus.Pending, false);
 
-        await using var db = OpenDb();
+        var db = _db;
         var req = await _requests.GetByIdOnContextAsync(db, requestId, ct);
         if (req is null) return (false, "Reopen request not found.", ReopenRequestStatus.Pending, false);
         if (req.RequestStatus != ReopenRequestStatus.Pending)

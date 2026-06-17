@@ -1,4 +1,3 @@
-using FlexCms.Framework.Modules;
 using FlexCms.Framework.Modules.Attributes;
 using FlexCms.InvestPro.Data;
 using Microsoft.EntityFrameworkCore;
@@ -14,46 +13,32 @@ namespace FlexCms.InvestPro.Services;
 [FcmsScoped]
 public class CloseRequestService
 {
-    private readonly ModuleActivationOptions _opts;
-    public CloseRequestService(ModuleActivationOptions opts) => _opts = opts;
-
-    private InvestProDbContext OpenDb() =>
-        (InvestProDbContext)new InvestProModule().CreateMigrationContext(_opts.ConnectionString, _opts.Provider)!;
+    private readonly InvestProDbContext _db;
+    public CloseRequestService(InvestProDbContext db) => _db = db;
 
     // ── Queries ─────────────────────────────────────────────────────────
 
-    public async Task<List<CloseRequest>> GetByInvestmentAsync(Guid investmentId, CancellationToken ct = default)
-    {
-        await using var db = OpenDb();
-        return await db.CloseRequests
+    public Task<List<CloseRequest>> GetByInvestmentAsync(Guid investmentId, CancellationToken ct = default)
+        => _db.CloseRequests
             .Include(r => r.Approvals)
             .Where(r => r.InvestmentId == investmentId && r.Status != EntityStatus.Deleted)
             .OrderByDescending(r => r.InitiatedAt)
             .ToListAsync(ct);
-    }
 
-    public async Task<CloseRequest?> GetByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var db = OpenDb();
-        return await db.CloseRequests
+    public Task<CloseRequest?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => _db.CloseRequests
             .Include(r => r.Approvals)
             .FirstOrDefaultAsync(r => r.Id == id, ct);
-    }
 
     public Task<bool> HasPendingForInvestmentAsync(Guid investmentId, CancellationToken ct = default)
-    {
-        var db = OpenDb();
-        try
-        {
-            return db.CloseRequests
-                .AnyAsync(r => r.InvestmentId == investmentId
-                               && r.RequestStatus == CloseRequestStatus.Pending
-                               && r.Status != EntityStatus.Deleted, ct);
-        }
-        finally { db.Dispose(); }
-    }
+        => _db.CloseRequests
+            .AnyAsync(r => r.InvestmentId == investmentId
+                           && r.RequestStatus == CloseRequestStatus.Pending
+                           && r.Status != EntityStatus.Deleted, ct);
 
     // ── Shared-context writers ──────────────────────────────────────────
+    // Kept so orchestrators can express "operate on my transaction" intent.
+    // The `db` arg here is the same scoped DbContext as our `_db`.
 
     public Task<bool> HasPendingForInvestmentOnContextAsync(InvestProDbContext db, Guid investmentId, CancellationToken ct = default)
         => db.CloseRequests

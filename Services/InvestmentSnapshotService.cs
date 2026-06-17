@@ -1,4 +1,3 @@
-using FlexCms.Framework.Modules;
 using FlexCms.Framework.Modules.Attributes;
 using FlexCms.InvestPro.Data;
 using Microsoft.EntityFrameworkCore;
@@ -9,62 +8,40 @@ namespace FlexCms.InvestPro.Services;
 /// <summary>
 /// Owns every read and write against investment_snapshots,
 /// snapshot_partner_details, and payouts (the snapshot's settlement rows).
-///
-/// <para>
-/// Two flavours of API:
-/// <list type="bullet">
-/// <item>Public Get*Async / Has*Async open their own DbContext.</item>
-/// <item>Public Stage*OnContext + DemoteSupersedingOnContext + StampSupersededReasonOnContext
-///   take an open <see cref="InvestProDbContext"/> so an orchestrator
-///   (CloseService, ReopenService) can compose multiple entity-service
-///   writes into one SaveChangesAsync transaction.</item>
-/// </list>
-/// </para>
 /// </summary>
 [FcmsScoped]
 public class InvestmentSnapshotService
 {
-    private readonly ModuleActivationOptions _opts;
-    public InvestmentSnapshotService(ModuleActivationOptions opts) => _opts = opts;
-
-    private InvestProDbContext OpenDb() =>
-        (InvestProDbContext)new InvestProModule().CreateMigrationContext(_opts.ConnectionString, _opts.Provider)!;
+    private readonly InvestProDbContext _db;
+    public InvestmentSnapshotService(InvestProDbContext db) => _db = db;
 
     // ── Queries ─────────────────────────────────────────────────────────
 
-    public async Task<InvestmentSnapshot?> GetActiveByInvestmentAsync(Guid investmentId, CancellationToken ct = default)
-    {
-        await using var db = OpenDb();
-        return await db.InvestmentSnapshots
+    public Task<InvestmentSnapshot?> GetActiveByInvestmentAsync(Guid investmentId, CancellationToken ct = default)
+        => _db.InvestmentSnapshots
             .Include(s => s.PartnerDetails)
             .FirstOrDefaultAsync(s => s.InvestmentId == investmentId
                                       && s.SnapshotStatus == SnapshotStatus.Active
                                       && s.Status != EntityStatus.Deleted, ct);
-    }
 
-    public async Task<InvestmentSnapshot?> GetByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var db = OpenDb();
-        return await db.InvestmentSnapshots
+    public Task<InvestmentSnapshot?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => _db.InvestmentSnapshots
             .Include(s => s.PartnerDetails)
             .FirstOrDefaultAsync(s => s.Id == id, ct);
-    }
 
-    public async Task<List<InvestmentSnapshot>> GetHistoryAsync(Guid investmentId, CancellationToken ct = default)
-    {
-        await using var db = OpenDb();
-        return await db.InvestmentSnapshots
+    public Task<List<InvestmentSnapshot>> GetHistoryAsync(Guid investmentId, CancellationToken ct = default)
+        => _db.InvestmentSnapshots
             .Where(s => s.InvestmentId == investmentId && s.Status != EntityStatus.Deleted)
             .OrderByDescending(s => s.Version)
             .ToListAsync(ct);
-    }
 
     // ── Shared-context writers (no SaveChanges) ─────────────────────────
+    // Kept for orchestrator ergonomics — DbContext is scoped per request,
+    // so the `db` arg here is always the same instance as our `_db`.
 
     /// <summary>
     /// Load the current Active snapshot (with PartnerDetails) on the caller's
-    /// DbContext so a reclose can compute per-partner adjustment deltas
-    /// without opening a second connection.
+    /// DbContext so a reclose can compute per-partner adjustment deltas.
     /// </summary>
     public Task<InvestmentSnapshot?> GetActiveByInvestmentOnContextAsync(InvestProDbContext db, Guid investmentId, CancellationToken ct = default)
         => db.InvestmentSnapshots

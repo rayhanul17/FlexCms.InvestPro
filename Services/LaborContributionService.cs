@@ -1,4 +1,3 @@
-using FlexCms.Framework.Modules;
 using FlexCms.Framework.Modules.Attributes;
 using FlexCms.InvestPro.Data;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +7,7 @@ namespace FlexCms.InvestPro.Services;
 [FcmsScoped]
 public class LaborContributionService : LedgerServiceBase<LaborContribution>
 {
-    public LaborContributionService(ModuleActivationOptions opts) : base(opts) { }
+    public LaborContributionService(InvestProDbContext db) : base(db) { }
     protected override DbSet<LaborContribution> Set(InvestProDbContext db) => db.LaborContributions;
     protected override LedgerKind Kind => LedgerKind.Labor;
 

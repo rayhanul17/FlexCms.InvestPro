@@ -1,4 +1,3 @@
-using FlexCms.Framework.Modules;
 using FlexCms.Framework.Modules.Attributes;
 using FlexCms.InvestPro.Data;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +7,7 @@ namespace FlexCms.InvestPro.Services;
 [FcmsScoped]
 public class RevenueEntryService : LedgerServiceBase<Revenue>
 {
-    public RevenueEntryService(ModuleActivationOptions opts) : base(opts) { }
+    public RevenueEntryService(InvestProDbContext db) : base(db) { }
     protected override DbSet<Revenue> Set(InvestProDbContext db) => db.Revenues;
     protected override LedgerKind Kind => LedgerKind.Revenue;
 

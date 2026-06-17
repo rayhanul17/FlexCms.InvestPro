@@ -1,4 +1,3 @@
-using FlexCms.Framework.Modules;
 using FlexCms.Framework.Modules.Attributes;
 using FlexCms.InvestPro.Data;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +17,7 @@ namespace FlexCms.InvestPro.Services;
 [FcmsScoped]
 public class CloseService
 {
-    private readonly ModuleActivationOptions _opts;
+    private readonly InvestProDbContext _db;
     private readonly CloseRequestService _requests;
     private readonly InvestmentSnapshotService _snapshots;
     private readonly InvestmentPartnerService _partners;
@@ -28,7 +27,7 @@ public class CloseService
     private readonly RevenueEntryService _revenues;
 
     public CloseService(
-        ModuleActivationOptions opts,
+        InvestProDbContext db,
         CloseRequestService requests,
         InvestmentSnapshotService snapshots,
         InvestmentPartnerService partners,
@@ -37,7 +36,7 @@ public class CloseService
         ExpenseEntryService expenses,
         RevenueEntryService revenues)
     {
-        _opts = opts;
+        _db = db;
         _requests = requests;
         _snapshots = snapshots;
         _partners = partners;
@@ -47,9 +46,6 @@ public class CloseService
         _revenues = revenues;
     }
 
-    private InvestProDbContext OpenDb() =>
-        (InvestProDbContext)new InvestProModule().CreateMigrationContext(_opts.ConnectionString, _opts.Provider)!;
-
     /// <summary>
     /// Start the close workflow. Moves the investment to Closing, creates a
     /// CloseRequest, and seeds one Pending CloseApproval row per partner.
@@ -57,7 +53,7 @@ public class CloseService
     /// </summary>
     public async Task<(bool ok, string? error, CloseRequest? request)> RequestCloseAsync(Guid investmentId, Guid initiatedByUserId, string? notes, CancellationToken ct = default)
     {
-        await using var db = OpenDb();
+        var db = _db;
         var inv = await db.Investments.FirstOrDefaultAsync(x => x.Id == investmentId, ct);
         if (inv is null) return (false, "Investment not found.", null);
         if (inv.LifecycleStatus != InvestmentLifecycle.Active)
@@ -115,7 +111,7 @@ public class CloseService
     {
         if (decision == DecisionKind.Pending) return (false, "Pending is not a valid decision.", CloseRequestStatus.Pending, null);
 
-        await using var db = OpenDb();
+        var db = _db;
         var req = await _requests.GetByIdOnContextAsync(db, closeRequestId, ct);
         if (req is null) return (false, "Close request not found.", CloseRequestStatus.Pending, null);
         if (req.RequestStatus != CloseRequestStatus.Pending)

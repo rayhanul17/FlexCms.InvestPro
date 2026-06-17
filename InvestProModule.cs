@@ -17,6 +17,31 @@ public class InvestProModule : BaseModule
 
     public override void RegisterServices(IServiceCollection services)
     {
+        // Register InvestProDbContext as a scoped service so every other
+        // service in the module can inject it via constructor. EF Core's
+        // default lifetime for DbContext is Scoped (one instance per HTTP
+        // request / DI scope) which matches the [FcmsScoped] services
+        // that hold it.
+        //
+        // ModuleActivationOptions resolves at DbContext-construction time —
+        // it's already a singleton registered before RegisterServices runs
+        // (see FcmsServiceExtensions.cs:259).
+        services.AddDbContext<InvestProDbContext>((sp, opts) =>
+        {
+            var ma = sp.GetRequiredService<ModuleActivationOptions>();
+            switch (ma.Provider)
+            {
+                case "mysql":
+                    opts.UseMySql(ma.ConnectionString, ServerVersion.AutoDetect(ma.ConnectionString));
+                    break;
+                case "mssql":
+                    opts.UseSqlServer(ma.ConnectionString);
+                    break;
+                case "postgresql":
+                    opts.UseNpgsql(ma.ConnectionString);
+                    break;
+            }
+        });
     }
 
     public override DbContext? CreateMigrationContext(string connectionString, string provider)

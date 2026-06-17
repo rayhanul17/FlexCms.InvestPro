@@ -1,4 +1,3 @@
-using FlexCms.Framework.Modules;
 using FlexCms.Framework.Modules.Attributes;
 using FlexCms.InvestPro.Data;
 using Microsoft.EntityFrameworkCore;
@@ -64,11 +63,8 @@ public sealed record ComparisonRow(
 [FcmsScoped]
 public class ReportService
 {
-    private readonly ModuleActivationOptions _opts;
-    public ReportService(ModuleActivationOptions opts) => _opts = opts;
-
-    private InvestProDbContext OpenDb() =>
-        (InvestProDbContext)new InvestProModule().CreateMigrationContext(_opts.ConnectionString, _opts.Provider)!;
+    private readonly InvestProDbContext _db;
+    public ReportService(InvestProDbContext db) => _db = db;
 
     // ── Report 1: Closure Report ────────────────────────────────────────
     //
@@ -77,7 +73,7 @@ public class ReportService
     // accompanies the snapshot.
     public async Task<List<ClosureRow>> GetClosureReportAsync(Guid investmentId, CancellationToken ct = default)
     {
-        await using var db = OpenDb();
+        var db = _db;
         const string sql = @"
             SELECT 'Capital' AS ""LedgerType"",
                    c.""TransactionDate"",
@@ -116,7 +112,7 @@ public class ReportService
     // numbers only; ProfitShareAmount stays NULL.
     public async Task<List<LifetimeRow>> GetLifetimeStatementAsync(Guid partnerId, CancellationToken ct = default)
     {
-        await using var db = OpenDb();
+        var db = _db;
         const string sql = @"
             SELECT i.""Code""             AS ""InvestmentCode"",
                    i.""Name""             AS ""InvestmentName"",
@@ -150,7 +146,7 @@ public class ReportService
     // the partner row is later edited in the global pool.
     public async Task<List<ZakatRow>> GetZakatReportAsync(int year, CancellationToken ct = default)
     {
-        await using var db = OpenDb();
+        var db = _db;
         const string sql = @"
             SELECT spd.""PartnerName"",
                    spd.""PartnerNid"",
@@ -178,7 +174,7 @@ public class ReportService
     // original contract.
     public async Task<List<ComparisonRow>> GetComparisonReportAsync(Guid investmentId, CancellationToken ct = default)
     {
-        await using var db = OpenDb();
+        var db = _db;
         const string sql = @"
             SELECT spd.""PartnerName"",
                    spd.""PartnerNid"",
