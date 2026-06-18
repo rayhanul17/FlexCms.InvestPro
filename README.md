@@ -43,6 +43,26 @@ dotnet run --launch-profile http
 
 First run brings up the setup wizard at `/Setup`. After completing setup the host restarts itself; the module is then discovered, migrations applied, permissions seeded (26 entries under the `flexcms.investpro.` prefix), menu item added.
 
+### Debug with breakpoints in module source (VS / F5)
+
+Open the git-ignored `FlexCms.dev.slnx` instead of `FlexCms.slnx` — it includes this module's `.csproj` as a referenced project, so VS attaches the debugger to the same DLL the host loads from `modules/FlexCms.InvestPro/bin/Debug/net10.0/`. Breakpoints in `.cs` files hit normally; the host's "production" loader path (zip upload → admin) is unaffected.
+
+Create the dev solution once (from parent repo root):
+
+```bash
+cp FlexCms.slnx FlexCms.dev.slnx
+```
+
+Then add the module project entry to `FlexCms.dev.slnx`:
+
+```xml
+<Folder Name="/modules/">
+  <Project Path="modules/FlexCms.InvestPro/FlexCms.InvestPro.csproj" />
+</Folder>
+```
+
+See [`docs/MODULE_DEV.md` § 3.C](../../docs/MODULE_DEV.md) in the parent repo for the full debug-friendly workflow.
+
 ### Adding more EF migrations
 
 From the module folder (`modules/FlexCms.InvestPro/`):
