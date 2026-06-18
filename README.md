@@ -45,15 +45,15 @@ First run brings up the setup wizard at `/Setup`. After completing setup the hos
 
 ### Debug with breakpoints in module source (VS / F5)
 
-Open the git-ignored `FlexCms.dev.slnx` instead of `FlexCms.slnx` — it includes this module's `.csproj` as a referenced project, so VS attaches the debugger to the same DLL the host loads from `modules/FlexCms.InvestPro/bin/Debug/net10.0/`. Breakpoints in `.cs` files hit normally; the host's "production" loader path (zip upload → admin) is unaffected.
+Open `FlexCms.dev.slnx` instead of `FlexCms.slnx` — it includes this module's `.csproj` as a referenced project, so VS attaches the debugger to the same DLL the host loads from `modules/FlexCms.InvestPro/bin/Debug/net10.0/`. Breakpoints in `.cs` files hit normally; the host's "production" loader path (zip upload → admin) is unaffected.
 
-Create the dev solution once (from parent repo root):
+The parent repo ships `FlexCms.dev.slnx.example` as a tracked baseline. Bootstrap your local copy once (from parent repo root):
 
 ```bash
-cp FlexCms.slnx FlexCms.dev.slnx
+cp FlexCms.dev.slnx.example FlexCms.dev.slnx
 ```
 
-Then add the module project entry to `FlexCms.dev.slnx`:
+Edit `FlexCms.dev.slnx` and uncomment the `<Project>` entry for this module:
 
 ```xml
 <Folder Name="/modules/">
@@ -61,7 +61,7 @@ Then add the module project entry to `FlexCms.dev.slnx`:
 </Folder>
 ```
 
-See [`docs/MODULE_DEV.md` § 3.C](../../docs/MODULE_DEV.md) in the parent repo for the full debug-friendly workflow.
+`FlexCms.dev.slnx` is git-ignored — your local edits never dirty git or affect teammates. See [`docs/MODULE_DEV.md` § 3.C](../../docs/MODULE_DEV.md) in the parent repo for the full debug-friendly workflow.
 
 ### Adding more EF migrations
 
