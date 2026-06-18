@@ -122,7 +122,7 @@
     </div>
 
     <div class="mt-3">
-        <button type="submit" class="btn btn-primary">@(isNew ? "Create" : "Save Changes")</button>
+        <button type="submit" class="btn btn-primary" fcms-authorize="@(isNew ? InvestProPermissions.PartnerCreate : InvestProPermissions.PartnerEdit)">@(isNew ? "Create" : "Save Changes")</button>
         <a asp-action="Index" class="btn btn-outline-secondary ms-2">Cancel</a>
     </div>
 </form>

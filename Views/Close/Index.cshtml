@@ -43,7 +43,7 @@
                     <label class="form-label">Notes</label>
                     <textarea name="notes" class="form-control" rows="2" placeholder="Optional context for partners"></textarea>
                 </div>
-                <button type="submit" class="btn btn-warning"><i class="bi bi-flag"></i> Request Close</button>
+                <button type="submit" class="btn btn-warning" fcms-authorize="@InvestProPermissions.CloseRequest"><i class="bi bi-flag"></i> Request Close</button>
             </form>
         </div>
     </div>
@@ -90,8 +90,8 @@
                                     <form method="post" action="/investpro/admin/investments/@inv.Id/close/@current.Id/decide" class="d-flex gap-1">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="PartnerId" value="@a.PartnerId" />
-                                        <button type="submit" name="Decision" value="Approved" class="btn btn-sm btn-success">Approve</button>
-                                        <button type="submit" name="Decision" value="Rejected" class="btn btn-sm btn-outline-danger">Reject</button>
+                                        <button type="submit" name="Decision" value="Approved" class="btn btn-sm btn-success" fcms-authorize="@InvestProPermissions.CloseDecide">Approve</button>
+                                        <button type="submit" name="Decision" value="Rejected" class="btn btn-sm btn-outline-danger" fcms-authorize="@InvestProPermissions.CloseDecide">Reject</button>
                                     </form>
                                 }
                             </td>

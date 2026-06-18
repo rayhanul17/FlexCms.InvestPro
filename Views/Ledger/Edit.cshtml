@@ -222,6 +222,7 @@
                                     <span class="text-muted small ms-2">@((a.FileSize/1024.0).ToString("N1")) KB</span>
                                 </div>
                                 <button type="button" class="btn btn-sm btn-outline-danger"
+                                        fcms-authorize="@InvestProPermissions.LedgerWrite"
                                         data-fcms-action="delete"
                                         data-url="/investpro/admin/investments/@inv!.Id/ledger/@kindSlug/@Model.Id/attachments/@a.Id/delete"
                                         data-confirm-title="Remove attachment?"
@@ -246,7 +247,7 @@
     </div>
 
     <div class="mt-3">
-        <button type="submit" class="btn btn-primary">@(isNew ? "Save Entry" : "Save Changes")</button>
+        <button type="submit" class="btn btn-primary" fcms-authorize="@InvestProPermissions.LedgerWrite">@(isNew ? "Save Entry" : "Save Changes")</button>
         <a href="/investpro/admin/investments/@inv!.Id/ledger/@kindSlug" class="btn btn-outline-secondary ms-2">Cancel</a>
     </div>
 </form>

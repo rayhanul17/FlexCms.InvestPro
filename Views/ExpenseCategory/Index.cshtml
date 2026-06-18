@@ -9,7 +9,7 @@
         <h4 class="mb-0">Expense Categories</h4>
         <small class="text-muted">Master list of expense categories. System categories cannot be deleted but can be deactivated.</small>
     </div>
-    <a asp-action="Create" class="btn btn-primary btn-sm">
+    <a asp-action="Create" class="btn btn-primary btn-sm" fcms-authorize="@InvestProPermissions.CategoryCreate">
         <i class="bi bi-plus-lg"></i> New Category
     </a>
 </div>
@@ -64,12 +64,13 @@
                             }
                         </td>
                         <td class="text-end">
-                            <a asp-action="Edit" asp-route-id="@c.Id" class="btn btn-sm btn-outline-secondary">
+                            <a asp-action="Edit" asp-route-id="@c.Id" class="btn btn-sm btn-outline-secondary" fcms-authorize="@InvestProPermissions.CategoryEdit">
                                 <i class="bi bi-pencil"></i>
                             </a>
                             @if (!c.IsSystem)
                             {
                                 <button type="button" class="btn btn-sm btn-outline-danger"
+                                        fcms-authorize="@InvestProPermissions.CategoryDelete"
                                         data-fcms-action="delete"
                                         data-url="/investpro/admin/expense-categories/@c.Id/delete"
                                         data-confirm-title="Delete category?"

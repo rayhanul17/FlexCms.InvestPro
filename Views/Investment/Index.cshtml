@@ -9,7 +9,7 @@
         <h4 class="mb-0">Investments</h4>
         <small class="text-muted">All projects. Multiple parallel investments are allowed — each runs in its own isolated ledger.</small>
     </div>
-    <a asp-action="Create" class="btn btn-primary btn-sm">
+    <a asp-action="Create" class="btn btn-primary btn-sm" fcms-authorize="@InvestProPermissions.InvestmentCreate">
         <i class="bi bi-plus-lg"></i> New Investment
     </a>
 </div>
@@ -57,10 +57,11 @@
                             </a>
                             @if (inv.LifecycleStatus == InvestmentLifecycle.Draft)
                             {
-                                <a asp-action="Edit" asp-route-id="@inv.Id" class="btn btn-sm btn-outline-secondary">
+                                <a asp-action="Edit" asp-route-id="@inv.Id" class="btn btn-sm btn-outline-secondary" fcms-authorize="@InvestProPermissions.InvestmentEdit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 <button type="button" class="btn btn-sm btn-outline-danger"
+                                        fcms-authorize="@InvestProPermissions.InvestmentDelete"
                                         data-fcms-action="delete"
                                         data-url="/investpro/admin/investments/@inv.Id/delete"
                                         data-confirm-title="Delete draft?"

@@ -1,3 +1,10 @@
 @using FlexCms.InvestPro
 @using FlexCms.InvestPro.Data
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@*
+    Framework tag helpers, including <element fcms-authorize="...">, which
+    hides the element when the calling user lacks the permission. Without
+    this line the attribute would render as a literal HTML attribute and
+    the view would always emit the button.
+*@
+@addTagHelper *, FlexCms.Framework

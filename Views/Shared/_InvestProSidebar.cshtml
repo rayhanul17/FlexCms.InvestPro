@@ -1,0 +1,39 @@
+@{
+    var path = Context.Request.Path.Value ?? "";
+    bool IsActive(string prefix) => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+
+    // Left-sidebar items for the InvestPro module. Replaces the host's
+    // admin menu when _InvestProLayout sets ViewData["SidebarMenuPartial"].
+    // The "← Admin home" link at the top is the escape hatch back to the
+    // host's main sidebar/dashboard so an operator never feels trapped.
+    var sections = new (string Url, string Label, string Icon, string? Permission)[]
+    {
+        ("/investpro/admin/investments",        "Investments",        "bi bi-briefcase",        FlexCms.InvestPro.InvestProPermissions.InvestmentView),
+        ("/investpro/admin/approvals",          "Approvals",          "bi bi-clipboard-check",  FlexCms.InvestPro.InvestProPermissions.ApprovalView),
+        ("/investpro/admin/reports",            "Reports",            "bi bi-graph-up",         FlexCms.InvestPro.InvestProPermissions.ReportView),
+        ("/investpro/admin/partners",           "Partners",           "bi bi-people",           FlexCms.InvestPro.InvestProPermissions.PartnerView),
+        ("/investpro/admin/expense-categories", "Expense Categories", "bi bi-tags",             FlexCms.InvestPro.InvestProPermissions.CategoryView),
+        ("/investpro/admin/approval-config",    "Approval Config",    "bi bi-shield-check",     FlexCms.InvestPro.InvestProPermissions.ApprovalConfigView),
+    };
+}
+
+<ul class="nav flex-column py-2">
+    <li class="nav-item">
+        <a class="nav-link" href="/admin">
+            <i class="bi bi-arrow-left-circle"></i>
+            <span>Admin home</span>
+        </a>
+    </li>
+    <li class="px-3 pt-3 pb-1 small text-uppercase text-muted fw-semibold" style="letter-spacing:.04em">
+        InvestPro
+    </li>
+    @foreach (var s in sections)
+    {
+        <li class="nav-item">
+            <a class="nav-link @(IsActive(s.Url) ? "active" : "")" href="@s.Url" fcms-authorize="@s.Permission">
+                <i class="@s.Icon"></i>
+                <span>@s.Label</span>
+            </a>
+        </li>
+    }
+</ul>

@@ -16,7 +16,7 @@
         <a href="/investpro/admin/investments/@inv.Id/timeline" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-list-ul"></i> Timeline
         </a>
-        <a href="/investpro/admin/investments/@inv.Id/ledger/@kindSlug/create" class="btn btn-sm btn-primary">
+        <a href="/investpro/admin/investments/@inv.Id/ledger/@kindSlug/create" class="btn btn-sm btn-primary" fcms-authorize="@InvestProPermissions.LedgerWrite">
             <i class="bi bi-plus-lg"></i> New @kind entry
         </a>
     </div>
@@ -75,10 +75,11 @@
                             }
                         </td>
                         <td class="text-end">
-                            <a href="/investpro/admin/investments/@inv!.Id/ledger/@kindSlug/@e.Id/edit" class="btn btn-sm btn-outline-secondary">
+                            <a href="/investpro/admin/investments/@inv!.Id/ledger/@kindSlug/@e.Id/edit" class="btn btn-sm btn-outline-secondary" fcms-authorize="@InvestProPermissions.LedgerWrite">
                                 <i class="bi bi-pencil"></i>
                             </a>
                             <button type="button" class="btn btn-sm btn-outline-danger"
+                                    fcms-authorize="@InvestProPermissions.LedgerWrite"
                                     data-fcms-action="delete"
                                     data-url="/investpro/admin/investments/@inv!.Id/ledger/@kindSlug/@e.Id/delete"
                                     data-confirm-title="Delete entry?"

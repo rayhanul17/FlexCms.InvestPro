@@ -1,6 +1,11 @@
 @{
-    Layout = "_AdminLayoutWithTopNav";
-    ViewData["ModuleSubNavPartial"] = "_InvestProSubNav";
+    // Module-owned chrome: inherit the host's _AdminLayout (topbar, theme,
+    // shared JS) but REPLACE the left sidebar with InvestPro's own
+    // section list via the SidebarMenuPartial override that the host
+    // layout honours. No top horizontal sub-nav strip — sections live
+    // in the sidebar only, like every other admin module section.
+    Layout = "_AdminLayout";
+    ViewData["SidebarMenuPartial"] = "_InvestProSidebar";
 }
 
 @RenderBody()

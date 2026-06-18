@@ -9,7 +9,7 @@
         <h4 class="mb-0">Partners (Shorik)</h4>
         <small class="text-muted">Global pool of investment partners — reusable across investments.</small>
     </div>
-    <a asp-action="Create" class="btn btn-primary btn-sm">
+    <a asp-action="Create" class="btn btn-primary btn-sm" fcms-authorize="@InvestProPermissions.PartnerCreate">
         <i class="bi bi-plus-lg"></i> New Partner
     </a>
 </div>
@@ -55,10 +55,11 @@
                             }
                         </td>
                         <td class="text-end">
-                            <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-sm btn-outline-secondary">
+                            <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-sm btn-outline-secondary" fcms-authorize="@InvestProPermissions.PartnerEdit">
                                 <i class="bi bi-pencil"></i>
                             </a>
                             <button type="button" class="btn btn-sm btn-outline-danger"
+                                    fcms-authorize="@InvestProPermissions.PartnerDelete"
                                     data-fcms-action="delete"
                                     data-url="/investpro/admin/partners/@p.Id/delete"
                                     data-confirm-title="Delete partner?"

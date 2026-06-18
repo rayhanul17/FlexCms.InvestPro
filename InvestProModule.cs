@@ -42,6 +42,12 @@ public class InvestProModule : BaseModule
                     break;
             }
         });
+
+        // Sample module-side IHostedService. Proves that AddHostedService
+        // from a module's RegisterServices works exactly like host-side
+        // registration: RegisterServices runs before builder.Build(), so
+        // ASP.NET's hosted-service runner picks the type up automatically.
+        services.AddHostedService<Services.InvestProDailySummaryService>();
     }
 
     public override DbContext? CreateMigrationContext(string connectionString, string provider)
